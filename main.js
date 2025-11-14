@@ -307,6 +307,7 @@ if (cmdOrApp === 'addpub' || cmdOrApp === 'rmpub') {
 
   // Start periodic gossip: ask for missing hashes first, otherwise pubkeys
   const backoff = new Map(); // hash -> (peerId -> { attempt, nextAt })
+  const followBackoff = new Map(); // followKey -> { attempt, nextAt }
   setInterval(() => {
     const urls = pubManager.getConnectedUrls();
     const clients = (wsManager && wsManager.getClientIds) ? wsManager.getClientIds() : [];
@@ -353,6 +354,9 @@ if (cmdOrApp === 'addpub' || cmdOrApp === 'rmpub') {
     } else if (gossipKeys.size > 0) {
       const keys = Array.from(gossipKeys);
       const key = keys[Math.floor(Math.random() * keys.length)];
+      const nowFollow = Date.now();
+      const followRec = followBackoff.get(key) || { attempt: 0, nextAt: 0 };
+      if (followRec.nextAt > nowFollow) return;
       // Try a pub or a ws client
       let sent = false;
       if (urls.length && Math.random() < 0.5) {
@@ -362,6 +366,16 @@ if (cmdOrApp === 'addpub' || cmdOrApp === 'rmpub') {
       if (!sent && clients.length && wsManager && wsManager.sendToRandomClient) {
         const id = wsManager.sendToRandomClient(key);
         if (id) { if (verbose) askedMsg = `[follow] ${key} -> ws:${id}`; }
+      }
+      if (sent) {
+        const attempt = Math.min(followRec.attempt + 1, 32);
+        const base = 5_000; // 5s
+        const max = 5 * 60 * 1000; // 5m
+        const delay = Math.min(base * (2 ** (attempt - 1)), max);
+        const jitter = Math.floor(delay * (0.2 * Math.random()));
+        followRec.attempt = attempt;
+        followRec.nextAt = nowFollow + delay + jitter;
+        followBackoff.set(key, followRec);
       }
     }
     if (askedMsg && verbose) console.log(`\n[gossip] asked ${askedMsg}`);
