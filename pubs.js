@@ -7,6 +7,7 @@ export function startPubManager(initialPubs = [], opts = {}) {
   const onFollow = typeof opts.onFollow === 'function' ? opts.onFollow : null;
   const verbose = Boolean(opts.verbose);
   const storedBlobs = new Set(); // unique blob hashes we've stored via apds.make
+  const isOpenedString = (s) => typeof s === 'string' && s.length === 57 && /^(\d{13})([A-Za-z0-9+/]{43}=)$/.test(s);
 
   function connectWithBackoffLocal(url, state) {
     try {
@@ -60,9 +61,9 @@ export function startPubManager(initialPubs = [], opts = {}) {
               }
             } catch {}
             try {
-              // Only add if it opens as a valid signature
+              // Only add if it opens as a valid signature (13-digit ts + 44-char hash)
               let canAdd = false;
-              try { const opened = await apds.open(t); canAdd = typeof opened === 'string' && opened.length >= 57; } catch {}
+              try { const opened = await apds.open(t); canAdd = isOpenedString(opened); } catch {}
               if (canAdd) {
                 const stored = await apds.add(t);
                 if (stored && verbose) console.log(`[apds] stored from ${url}: ${t}`);

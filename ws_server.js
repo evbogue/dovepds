@@ -2,6 +2,7 @@ export function startWsServer(apds, { port = 48080, verbose = false, onMissingHa
   const clients = new Map(); // id -> WebSocket
   let seq = 0;
   const storedBlobs = new Set();
+  const isOpenedString = (s) => typeof s === 'string' && s.length === 57 && /^(\d{13})([A-Za-z0-9+/]{43}=)$/.test(s);
 
   try {
     Deno.serve({ port }, (req) => {
@@ -48,7 +49,7 @@ export function startWsServer(apds, { port = 48080, verbose = false, onMissingHa
             // Ingest signed messages and blobs; discover links similar to pub peers
             try {
               let canAdd = false;
-              try { const opened = await apds.open(t); canAdd = typeof opened === 'string' && opened.length >= 57; } catch {}
+              try { const opened = await apds.open(t); canAdd = isOpenedString(opened); } catch {}
               if (canAdd) {
                 const stored = await apds.add(t);
                 if (stored && verbose) console.log(`[ws] stored from ${id}: ${t}`);
