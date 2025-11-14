@@ -1,0 +1,9 @@
+{
+  "follows": [
+    "evSFOKnXaF9ZWSsff8bVfXP6+XnGZUj8XNp6bca590k="
+  ],
+  "pubs": [
+    "ws://localhost:9000/",
+    "wss://pub.wiredove.net/"
+  ]
+}
